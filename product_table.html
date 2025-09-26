@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Product List (GST) - JS Mini Project</title>
+
+  <!-- Bootstrap CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <!-- Bootstrap Icons -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <!-- Custom CSS -->
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="d-flex align-items-center justify-content-between mb-3">
+      <div>
+        <h3 class="mb-0">Product List (GST)</h3>
+        <div class="small-muted">Add, edit, delete products; calculates total price with GST and discount</div>
+      </div>
+      <div>
+        <button id="btnAdd" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#productModal">
+          <i class="bi bi-plus-lg"></i> Add Product
+        </button>
+        <button id="btnDownload" class="btn btn-outline-secondary ms-2">
+          <i class="bi bi-download"></i> Download Data
+        </button>
+      </div>
+    </div>
+
+    <nav class="navbar navbar-custom d-flex justify-content-between align-items-center box-1">
+      <div class="d-flex align-items-center gap-2">
+        <input type="text" id="searchInput" class="form-control" placeholder="Search products by name...">
+        <button id="btnSearch" class="btn btn-light"><i class="bi bi-search"></i> Search</button>
+        <button id="btnClear" class="btn btn-outline-light"><i class="bi bi-x-circle"></i> Clear</button>
+      </div>
+      <span class="navbar-text">Total products: <span id="totalCount">0</span></span>
+    </nav>
+
+    <div class="table-responsive">
+      <table class="table table-striped table-hover align-middle" id="productTable">
+        <thead class="table-light">
+          <tr>
+            <th>#</th>
+            <th>Product Name</th>
+            <th class="text-end">Price</th>
+            <th class="text-end">GST (%)</th>
+            <th class="text-end">Discount (%)</th>
+            <th class="text-end">Final Price (After Discount)</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- rows rendered by JavaScript -->
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+
+  <!-- Modal -->
+  <div class="modal fade" id="productModal" tabindex="-1" aria-labelledby="productModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <form id="productForm">
+          <div class="modal-header">
+            <h5 class="modal-title" id="productModalLabel">Add Product</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <input type="hidden" id="productIndex">
+
+            <div class="mb-3">
+              <label class="modal-label">Product Name</label>
+              <input id="productName" class="form-control" required>
+            </div>
+
+    <div class="row g-2">
+      <div class="col-4 mb-3">
+        <label class="modal-label">Price</label>
+        <input id="productPrice" type="number" min="0" step="0.01" class="form-control" required>
+      </div>
+      <div class="col-4 mb-3">
+        <label class="modal-label">GST Rate (%)</label>
+        <input id="productGst" type="number" min="0" max="100" step="0.01" class="form-control" required>
+      </div>
+      <div class="col-4 mb-3">
+        <label class="modal-label">Discount (%)</label>
+        <input id="productDiscount" type="number" min="0" max="100" step="0.01" class="form-control">
+      </div>
+    </div>
+
+            <div class="mb-2 small-muted">Final price (after GST and discount) will be calculated automatically.</div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" id="saveBtn" class="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Bootstrap JS (with Popper) -->
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    let products = [
+      { name: 'Wireless Mouse', price: 1200.00, gst: 18, discount: 0 },
+      { name: 'Mechanical Keyboard', price: 4500.00, gst: 18, discount: 0 },
+      { name: '27" Monitor', price: 22000.00, gst: 18, discount: 0 }
+    ];
+
+    if (localStorage.getItem('products_v1')) {
+      try { 
+        products = JSON.parse(localStorage.getItem('products_v1')).map(p => ({ ...p, discount: p.discount || 0 }));
+      } catch(e) {}
+    }
+
+    const tbody = document.querySelector('#productTable tbody');
+    const totalCountEl = document.getElementById('totalCount');
+    const productModal = new bootstrap.Modal(document.getElementById('productModal'));
+
+    function calculateTotal(price, gst, discount) {
+      const gstTotal = Number(price) + (Number(price) * Number(gst) / 100);
+      const finalTotal = gstTotal - (gstTotal * Number(discount) / 100);
+      return Number(finalTotal.toFixed(2));
+    }
+
+    function renderTable(list = products) {
+      tbody.innerHTML = '';
+      list.forEach((p, idx) => {
+        const discount = p.discount || 0;
+        const finalPrice = calculateTotal(p.price, p.gst, discount);
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${idx + 1}</td>
+          <td>${escapeHtml(p.name)}</td>
+          <td class="text-end">${Number(p.price).toLocaleString()}</td>
+          <td class="text-end">${Number(p.gst)}</td>
+          <td class="text-end">${Number(discount)}</td>
+          <td class="text-end">${finalPrice.toLocaleString()}</td>
+          <td class="table-actions">
+            <button class="btn btn-sm btn-outline-primary" data-action="edit" data-index="${idx}" title="Edit"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-danger" data-action="delete" data-index="${idx}" title="Delete"><i class="bi bi-trash"></i></button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+      totalCountEl.textContent = list.length;
+      saveToStorage();
+    }
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>\"]/g, function(tag) {
+        const charsToReplace = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' };
+        return charsToReplace[tag] || tag;
+      });
+    }
+
+    function saveToStorage() {
+      localStorage.setItem('products_v1', JSON.stringify(products));
+    }
+
+    const form = document.getElementById('productForm');
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const idx = document.getElementById('productIndex').value;
+      const name = document.getElementById('productName').value.trim();
+      const price = parseFloat(document.getElementById('productPrice').value) || 0;
+      const gst = parseFloat(document.getElementById('productGst').value) || 0;
+      const discount = parseFloat(document.getElementById('productDiscount').value) || 0;
+
+      const record = { name, price, gst, discount };
+
+      if (idx === '') {
+        products.push(record);
+      } else {
+        products[Number(idx)] = record;
+      }
+
+      renderTable();
+      productModal.hide();
+      form.reset();
+      document.getElementById('productIndex').value = '';
+    });
+
+    tbody.addEventListener('click', function(e) {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      const action = btn.getAttribute('data-action');
+      const idx = Number(btn.getAttribute('data-index'));
+      if (action === 'edit') {
+        openEditModal(idx);
+      } else if (action === 'delete') {
+        if (confirm('Delete this product?')) {
+          products.splice(idx, 1);
+          renderTable();
+        }
+      }
+    });
+
+    function openEditModal(idx) {
+      const p = products[idx];
+      document.getElementById('productIndex').value = idx;
+      document.getElementById('productName').value = p.name;
+      document.getElementById('productPrice').value = p.price;
+      document.getElementById('productGst').value = p.gst;
+      document.getElementById('productDiscount').value = p.discount || 0;
+      document.getElementById('productModalLabel').textContent = 'Edit Product';
+      productModal.show();
+    }
+
+    document.getElementById('btnAdd').addEventListener('click', () => {
+      form.reset();
+      document.getElementById('productIndex').value = '';
+      document.getElementById('productModalLabel').textContent = 'Add Product';
+    });
+
+    document.getElementById('btnDownload').addEventListener('click', () => {
+      const dataStr = JSON.stringify(products, null, 2);
+      const blob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'products.json';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    });
+
+    // Search functionality
+    document.getElementById('btnSearch').addEventListener('click', () => {
+      const term = document.getElementById('searchInput').value.toLowerCase();
+      const filtered = products.filter(p => p.name.toLowerCase().includes(term));
+      renderTable(filtered);
+    });
+
+    document.getElementById('btnClear').addEventListener('click', () => {
+      document.getElementById('searchInput').value = '';
+      renderTable();
+    });
+
+    renderTable();
+  </script>
+</body>
+</html>
